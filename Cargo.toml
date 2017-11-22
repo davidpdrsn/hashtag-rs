@@ -2,6 +2,8 @@
 name = "hashtag"
 version = "0.1.0"
 authors = ["David Pedersen <david.pdrsn@gmail.com>"]
+description = "A hashtag parser"
+license = "MIT"
 
 [dependencies]
 serde = "1.0.21"
