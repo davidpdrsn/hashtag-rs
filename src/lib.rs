@@ -217,7 +217,7 @@ where
                     }
                 }
 
-                &Token::Space(idx) => {
+                &Token::Whitespace(idx) => {
                     if stm.parsing_hashtag() {
                         stm.hashtag_finishes_at(idx - 1);
                     }
@@ -271,7 +271,7 @@ where
 #[derive(Eq, PartialEq, Debug)]
 enum Token {
     Char(char, usize),
-    Space(usize),
+    Whitespace(usize),
     Hashtag(usize),
     StartOfString,
     EndOfString(usize),
@@ -286,7 +286,7 @@ impl IsHashtagToken for Token {
         match self {
             &Token::Hashtag(_) => true,
             &Token::Char(_, _) => false,
-            &Token::Space(_) => false,
+            &Token::Whitespace(_) => false,
             &Token::StartOfString => false,
             &Token::EndOfString(_) => false,
         }
@@ -319,7 +319,10 @@ where
             last_index = idx;
             match c {
                 '#' => Token::Hashtag(idx),
-                ' ' => Token::Space(idx),
+                ' ' => Token::Whitespace(idx),
+                '\n' => Token::Whitespace(idx),
+                '\r' => Token::Whitespace(idx),
+                '\t' => Token::Whitespace(idx),
                 _ => Token::Char(c, idx),
             }
         })
@@ -340,7 +343,7 @@ impl IsEndOfHashtag for char {
     fn is_end_of_hashtag(&self) -> bool {
         match self {
             &'\'' | &' ' | &'%' | &'#' | &'\n' | &'"' | &'\t' | &'!' | &'@' | &'$' | &'^' |
-            &'&' | &'*' | &'(' | &')' => true,
+            &'&' | &'*' | &'(' | &')' | &'\r' => true,
             _ => false,
         }
     }
@@ -360,7 +363,7 @@ impl IsEndOfHashtag for char {
 impl IsEndOfHashtag for Token {
     fn is_end_of_hashtag(&self) -> bool {
         match self {
-            &Token::Space(_) => true,
+            &Token::Whitespace(_) => true,
             &Token::Char(c, _) => c.is_end_of_hashtag(),
             &Token::EndOfString(_) => true,
             &Token::Hashtag(_) => false,
@@ -371,7 +374,7 @@ impl IsEndOfHashtag for Token {
     fn allowed_in_middle_but_not_end(&self) -> bool {
         match self {
             &Token::Char(c, _) => c.allowed_in_middle_but_not_end(),
-            &Token::Space(_) => false,
+            &Token::Whitespace(_) => false,
             &Token::Hashtag(_) => false,
             &Token::StartOfString => false,
             &Token::EndOfString(_) => false,
@@ -381,7 +384,7 @@ impl IsEndOfHashtag for Token {
     fn allowed_in_middle_but_not_start(&self) -> bool {
         match self {
             &Token::Char(c, _) => c.allowed_in_middle_but_not_start(),
-            &Token::Space(_) => false,
+            &Token::Whitespace(_) => false,
             &Token::Hashtag(_) => false,
             &Token::StartOfString => false,
             &Token::EndOfString(_) => false,
@@ -434,7 +437,7 @@ mod tests {
                 Token::Char('e', 1),
                 Token::Char('x', 2),
                 Token::Char('t', 3),
-                Token::Space(4),
+                Token::Whitespace(4),
                 Token::Hashtag(5),
                 Token::Char('f', 6),
                 Token::Char('o', 7),
@@ -531,29 +534,30 @@ mod tests {
         assert_parse("#a.", vec![Hashtag::new("a", 0, 1)]);
         assert_parse("#a-b", vec![Hashtag::new("a-b", 0, 3)]);
         assert_parse("#a-", vec![Hashtag::new("a", 0, 1)]);
-
         assert_parse("#a-a", vec![Hashtag::new("a-a", 0, 3)]);
         assert_parse("#a.a", vec![Hashtag::new("a.a", 0, 3)]);
         assert_parse("#-a", vec![]);
         assert_parse("#.a", vec![]);
-
         assert_parse(
             "#a\n#b",
             vec![Hashtag::new("a", 0, 1), Hashtag::new("b", 3, 4)],
         );
+        assert_parse(
+            "#a  #b",
+            vec![Hashtag::new("a", 0, 1), Hashtag::new("b", 4, 5)],
+        );
+        assert_parse(
+            "#a\r\n#b",
+            vec![Hashtag::new("a", 0, 1), Hashtag::new("b", 4, 5)],
+        );
 
-        // Emoji that are more than one codepoint...
-        // assert_parse("#☝🏽", vec![Hashtag::new("#☝🏽", 1, 1)]);
-        // assert_parse(
-        //     "#👩‍👩‍👦‍👦",
-        //     vec![Hashtag::new("#👩‍👩‍👦‍👦", 1, 1)],
-        // );
     }
 
     fn assert_parse(text: &'static str, expected_tags: Vec<Hashtag>) {
         println!("Text: {}", text);
 
         let actual_tags = parse_hashtags(text);
+        println!("actual_tags = {:?}", actual_tags);
         assert_eq!(actual_tags.len(), expected_tags.len());
         actual_tags.iter().zip(expected_tags.iter()).for_each(
             |(a, b)| {
