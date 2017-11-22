@@ -6,6 +6,13 @@ pub struct Hashtag {
 }
 
 impl Hashtag {
+    pub fn parse<S>(text: S) -> Vec<Self>
+    where
+        S: Into<String>,
+    {
+        parse_hashtags(text)
+    }
+
     fn new<S>(text: S, start: usize, end: usize) -> Hashtag
     where
         S: Into<String>,
@@ -18,20 +25,12 @@ impl Hashtag {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
-enum Token {
-    Char(char, usize),
-    Space(usize),
-    Hashtag(usize),
-    StartOfString,
-    EndOfString(usize),
-}
-
 struct ParsingStateMachine {
-    parsing_hashtag: bool,
-    hashtag_start_index: usize,
+    consumed_anything: bool,
     hashtag_buffer: String,
+    hashtag_start_index: usize,
     hashtags: Vec<Hashtag>,
+    parsing_hashtag: bool,
 }
 
 impl ParsingStateMachine {
@@ -41,10 +40,15 @@ impl ParsingStateMachine {
             hashtag_start_index: Self::default_hashtag_start_index(),
             hashtag_buffer: Self::default_hashtag_buffer(),
             hashtags: Self::default_hashtags(),
+            consumed_anything: Self::default_consumed_anything(),
         }
     }
 
     fn default_parse_hashtag() -> bool {
+        false
+    }
+
+    fn default_consumed_anything() -> bool {
         false
     }
 
@@ -69,18 +73,21 @@ impl ParsingStateMachine {
     }
 
     fn hashtag_finishes_at(&mut self, idx: usize) {
-        self.consume_built_up_hashtag(idx);
+        if self.consumed_anything {
+            self.hashtags.push(Hashtag::new(
+                self.hashtag_buffer.clone(),
+                self.hashtag_start_index,
+                idx,
+            ));
+        }
+        self.reset_parsing_state();
+    }
+
+    fn reset_parsing_state(&mut self) {
         self.parsing_hashtag = Self::default_parse_hashtag();
         self.hashtag_start_index = Self::default_hashtag_start_index();
         self.hashtag_buffer = Self::default_hashtag_buffer();
-    }
-
-    fn consume_built_up_hashtag(&mut self, idx: usize) {
-        self.hashtags.push(Hashtag::new(
-            self.hashtag_buffer.clone(),
-            self.hashtag_start_index,
-            idx - 1,
-        ));
+        self.consumed_anything = Self::default_consumed_anything();
     }
 
     fn hashtag_incoming(&mut self) {
@@ -89,6 +96,7 @@ impl ParsingStateMachine {
 
     fn consume_char(&mut self, c: char) {
         self.hashtag_buffer.push(c);
+        self.consumed_anything = true;
     }
 
     fn get_hashtags(self) -> Vec<Hashtag> {
@@ -96,7 +104,7 @@ impl ParsingStateMachine {
     }
 }
 
-pub fn parse_hashtags<S>(text: S) -> Vec<Hashtag>
+fn parse_hashtags<S>(text: S) -> Vec<Hashtag>
 where
     S: Into<String>,
 {
@@ -111,36 +119,48 @@ where
             match token {
                 &Token::Hashtag(idx) => {
                     if stm.parsing_hashtag() {
-                        stm.hashtag_token_seen_at(idx);
+                        if tokens_iter.peek().is_end_of_hashtag() {
+                            stm.reset_parsing_state();
+                        } else {
+                            stm.hashtag_token_seen_at(idx);
+                        }
                     }
                 }
 
                 &Token::Space(idx) => {
-                    // TODO: Hashtags can end with other things than spaces
                     if stm.parsing_hashtag() {
-                        stm.hashtag_finishes_at(idx);
+                        stm.hashtag_finishes_at(idx - 1);
                     }
 
-                    if let Some(&&Token::Hashtag(_)) = tokens_iter.peek() {
+                    if tokens_iter.peek().is_hashtag_token() {
                         stm.hashtag_incoming();
                     }
                 }
 
-                &Token::Char(c, _idx) => {
+                &Token::Char(c, idx) => {
                     if stm.parsing_hashtag() {
-                        stm.consume_char(c);
+                        if c.is_end_of_hashtag() {
+                            stm.hashtag_finishes_at(idx - 1);
+                        } else {
+                            stm.consume_char(c);
+                        }
+
+                        if tokens_iter.peek().is_hashtag_token() {
+                            stm.hashtag_finishes_at(idx);
+                            stm.hashtag_incoming();
+                        }
                     }
                 }
 
                 &Token::StartOfString => {
-                    if let Some(&&Token::Hashtag(_)) = tokens_iter.peek() {
+                    if tokens_iter.peek().is_hashtag_token() {
                         stm.hashtag_incoming();
                     }
                 }
 
                 &Token::EndOfString(idx) => {
                     if stm.parsing_hashtag() {
-                        stm.consume_built_up_hashtag(idx);
+                        stm.hashtag_finishes_at(idx - 1);
                     }
                 }
             }
@@ -148,7 +168,43 @@ where
             break;
         }
     }
-    stm.get_hashtags()
+    let hashtags = stm.get_hashtags();
+    hashtags
+}
+
+#[derive(Eq, PartialEq, Debug)]
+enum Token {
+    Char(char, usize),
+    Space(usize),
+    Hashtag(usize),
+    StartOfString,
+    EndOfString(usize),
+}
+
+trait IsHashtagToken {
+    fn is_hashtag_token(&self) -> bool;
+}
+
+impl IsHashtagToken for Token {
+    fn is_hashtag_token(&self) -> bool {
+        match self {
+            &Token::Hashtag(_) => true,
+            _ => false,
+        }
+    }
+}
+
+impl<'a, 'b, T> IsHashtagToken for Option<&'a &'b T>
+where
+    T: IsHashtagToken,
+{
+    fn is_hashtag_token(&self) -> bool {
+        if let &Some(ref x) = self {
+            x.is_hashtag_token()
+        } else {
+            false
+        }
+    }
 }
 
 fn tokenize<S>(text: S) -> Vec<Token>
@@ -157,17 +213,58 @@ where
 {
     let text: String = text.into();
     let mut tokens: Vec<Token> = vec![Token::StartOfString];
+    let mut last_index = 0;
     text.chars()
         .enumerate()
-        .map(|(idx, c)| match c {
-            '#' => Token::Hashtag(idx),
-            ' ' => Token::Space(idx),
-            _ => Token::Char(c, idx),
+        .map(|(idx, c)| {
+            last_index = idx;
+            match c {
+                '#' => Token::Hashtag(idx),
+                ' ' => Token::Space(idx),
+                _ => Token::Char(c, idx),
+            }
         })
         .for_each(|token| tokens.push(token));
-    tokens.push(Token::EndOfString(text.len()));
+    tokens.push(Token::EndOfString(last_index + 1));
     tokens
 }
+
+trait IsEndOfHashtag {
+    fn is_end_of_hashtag(&self) -> bool;
+}
+
+impl IsEndOfHashtag for char {
+    fn is_end_of_hashtag(&self) -> bool {
+        match self {
+            &'\'' | &' ' | &'%' | &'#' => true,
+            _ => false,
+        }
+    }
+}
+
+impl IsEndOfHashtag for Token {
+    fn is_end_of_hashtag(&self) -> bool {
+        match self {
+            &Token::Space(_) => true,
+            &Token::Char(c, _) => c.is_end_of_hashtag(),
+            _ => false,
+        }
+    }
+}
+
+impl<'a, 'b, T> IsEndOfHashtag for Option<&'a &'b T>
+where
+    T: IsEndOfHashtag,
+{
+    fn is_end_of_hashtag(&self) -> bool {
+        if let &Some(ref x) = self {
+            x.is_end_of_hashtag()
+        } else {
+            false
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -195,6 +292,18 @@ mod tests {
     }
 
     #[test]
+    fn test_tokenize_strings_with_emojis() {
+        assert_eq!(
+            tokenize("😀"),
+            vec![
+                Token::StartOfString,
+                Token::Char('😀', 0),
+                Token::EndOfString(1),
+            ]
+        );
+    }
+
+    #[test]
     fn it_parses_hashtags() {
         assert_parse(
             "Here comes some text #foo #bar",
@@ -215,31 +324,66 @@ mod tests {
         )
     }
 
-    // #[test]
-    // fn it_parses_hashes_without_text() {
-    //     assert_parse("here # comes", vec![]);
-    //     assert_parse("here comes#", vec![]);
-    //     assert_parse("#here comes", vec![]);
+    #[test]
+    fn it_parses_hashes_without_text() {
+        assert_parse("here # comes", vec![]);
+        assert_parse("here comes#", vec![]);
+        assert_parse("#here comes", vec![Hashtag::new("here", 1, 4)]);
 
-    //     assert_parse("here ## comes", vec![]);
-    //     assert_parse("here comes##", vec![]);
-    //     assert_parse("##here comes", vec![]);
-    // }
+        assert_parse("here ## comes", vec![]);
+        assert_parse("here comes##", vec![]);
+        assert_parse("##here comes", vec![Hashtag::new("here", 2, 5)]);
+    }
 
-    // #[test]
-    // fn it_parses_hashtags_with_s() {
-    //     assert_parse(
-    //         "#bob's thing is #cool yes",
-    //         vec![Hashtag::new("bob", 1, 3), Hashtag::new("cool", 17, 20)],
-    //     );
-    // }
+    #[test]
+    fn it_parses_hashtags_with_s() {
+        assert_parse(
+            "#bob's thing is #cool yes",
+            vec![Hashtag::new("bob", 1, 3), Hashtag::new("cool", 17, 20)],
+        );
+    }
 
-    // #test-123 = ["test"]
-    // #test_123 = ["test_123"]
-    // with emoji
+    #[test]
+    fn it_parses_many_different_kinds() {
+        assert_parse("#a1", vec![Hashtag::new("a1", 1, 2)]);
+        assert_parse("#a_1", vec![Hashtag::new("a_1", 1, 3)]);
+        assert_parse("#a-1", vec![Hashtag::new("a-1", 1, 3)]);
+        assert_parse("#a.1", vec![Hashtag::new("a.1", 1, 3)]);
+        assert_parse("#😀", vec![Hashtag::new("😀", 1, 1)]);
+        assert_parse(" #whá", vec![Hashtag::new("whá", 2, 4)]);
+        assert_parse("fdsf dfds", vec![]);
+        assert_parse("#%h%", vec![]);
+        assert_parse("#%", vec![]);
+        assert_parse("#%h", vec![]);
+        assert_parse("#h%", vec![Hashtag::new("h", 1, 1)]);
+        assert_parse("#_foo_", vec![Hashtag::new("_foo_", 1, 5)]);
+        assert_parse("#-foo-", vec![Hashtag::new("-foo-", 1, 5)]);
+        assert_parse("#1", vec![Hashtag::new("1", 1, 1)]);
+        assert_parse("#1a", vec![Hashtag::new("1a", 1, 2)]);
+        assert_parse("a#b", vec![]);
+        assert_parse(
+            "#a#b",
+            vec![Hashtag::new("a", 1, 1), Hashtag::new("b", 3, 3)],
+        );
+        assert_parse("#a#", vec![Hashtag::new("a", 1, 1)]);
+        assert_parse("#a# whatever", vec![Hashtag::new("a", 1, 1)]);
+        assert_parse("#a# b", vec![Hashtag::new("a", 1, 1)]);
+        assert_parse("b #a#", vec![Hashtag::new("a", 3, 3)]);
+        assert_parse("b #a# b", vec![Hashtag::new("a", 3, 3)]);
+        assert_parse("#á", vec![Hashtag::new("á", 1, 1)]);
+        assert_parse("#m-örg", vec![Hashtag::new("m-örg", 1, 5)]);
+        assert_parse("#m.örg", vec![Hashtag::new("m.örg", 1, 5)]);
+
+        // Emoji that are more than one codepoint...
+        // assert_parse("#☝🏽", vec![Hashtag::new("#☝🏽", 1, 1)]);
+        // assert_parse(
+        //     "#👩‍👩‍👦‍👦",
+        //     vec![Hashtag::new("#👩‍👩‍👦‍👦", 1, 1)],
+        // );
+    }
 
     fn assert_parse(text: &'static str, expected_tags: Vec<Hashtag>) {
-        println!("Failed text: {}", text);
+        println!("Text: {}", text);
 
         let actual_tags = parse_hashtags(text);
         assert_eq!(actual_tags.len(), expected_tags.len());
