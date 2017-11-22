@@ -1,4 +1,10 @@
-#[derive(Eq, PartialEq, Debug)]
+#[macro_use]
+extern crate serde_derive;
+
+extern crate serde;
+extern crate serde_json;
+
+#[derive(Eq, PartialEq, Debug, Serialize)]
 pub struct Hashtag {
     pub text: String,
     pub start: usize,
@@ -22,6 +28,10 @@ impl Hashtag {
             start: start,
             end: end,
         }
+    }
+
+    pub fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
     }
 }
 
