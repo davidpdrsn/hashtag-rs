@@ -131,6 +131,8 @@ where
                     if stm.parsing_hashtag() {
                         if tokens_iter.peek().is_end_of_hashtag() {
                             stm.reset_parsing_state();
+                        } else if tokens_iter.peek().allowed_in_middle_but_not_start() {
+                            stm.reset_parsing_state();
                         } else {
                             stm.hashtag_token_seen_at(idx);
                         }
@@ -152,7 +154,13 @@ where
                         if c.is_end_of_hashtag() {
                             stm.hashtag_finishes_at(idx - 1);
                         } else {
-                            stm.consume_char(c);
+                            if c.allowed_in_middle_but_not_end() &&
+                                tokens_iter.peek().is_end_of_hashtag()
+                            {
+                                stm.hashtag_finishes_at(idx - 1);
+                            } else {
+                                stm.consume_char(c);
+                            }
                         }
 
                         if tokens_iter.peek().is_hashtag_token() {
@@ -199,7 +207,10 @@ impl IsHashtagToken for Token {
     fn is_hashtag_token(&self) -> bool {
         match self {
             &Token::Hashtag(_) => true,
-            _ => false,
+            &Token::Char(_, _) => false,
+            &Token::Space(_) => false,
+            &Token::StartOfString => false,
+            &Token::EndOfString(_) => false,
         }
     }
 }
@@ -241,12 +252,30 @@ where
 
 trait IsEndOfHashtag {
     fn is_end_of_hashtag(&self) -> bool;
+
+    fn allowed_in_middle_but_not_end(&self) -> bool;
+
+    fn allowed_in_middle_but_not_start(&self) -> bool;
 }
 
 impl IsEndOfHashtag for char {
     fn is_end_of_hashtag(&self) -> bool {
         match self {
             &'\'' | &' ' | &'%' | &'#' => true,
+            _ => false,
+        }
+    }
+
+    fn allowed_in_middle_but_not_end(&self) -> bool {
+        match self {
+            &'.' | &'-' => true,
+            _ => false,
+        }
+    }
+
+    fn allowed_in_middle_but_not_start(&self) -> bool {
+        match self {
+            &'.' | &'-' => true,
             _ => false,
         }
     }
@@ -257,7 +286,29 @@ impl IsEndOfHashtag for Token {
         match self {
             &Token::Space(_) => true,
             &Token::Char(c, _) => c.is_end_of_hashtag(),
-            _ => false,
+            &Token::EndOfString(_) => true,
+            &Token::Hashtag(_) => false,
+            &Token::StartOfString => false,
+        }
+    }
+
+    fn allowed_in_middle_but_not_end(&self) -> bool {
+        match self {
+            &Token::Char(c, _) => c.allowed_in_middle_but_not_end(),
+            &Token::Space(_) => false,
+            &Token::Hashtag(_) => false,
+            &Token::StartOfString => false,
+            &Token::EndOfString(_) => false,
+        }
+    }
+
+    fn allowed_in_middle_but_not_start(&self) -> bool {
+        match self {
+            &Token::Char(c, _) => c.allowed_in_middle_but_not_start(),
+            &Token::Space(_) => false,
+            &Token::Hashtag(_) => false,
+            &Token::StartOfString => false,
+            &Token::EndOfString(_) => false,
         }
     }
 }
@@ -269,6 +320,22 @@ where
     fn is_end_of_hashtag(&self) -> bool {
         if let &Some(ref x) = self {
             x.is_end_of_hashtag()
+        } else {
+            false
+        }
+    }
+
+    fn allowed_in_middle_but_not_end(&self) -> bool {
+        if let &Some(ref x) = self {
+            x.allowed_in_middle_but_not_end()
+        } else {
+            false
+        }
+    }
+
+    fn allowed_in_middle_but_not_start(&self) -> bool {
+        if let &Some(ref x) = self {
+            x.allowed_in_middle_but_not_start()
         } else {
             false
         }
@@ -355,6 +422,7 @@ mod tests {
 
     #[test]
     fn it_parses_many_different_kinds() {
+
         assert_parse("#a1", vec![Hashtag::new("a1", 0, 2)]);
         assert_parse("#a_1", vec![Hashtag::new("a_1", 0, 3)]);
         assert_parse("#a-1", vec![Hashtag::new("a-1", 0, 3)]);
@@ -367,7 +435,7 @@ mod tests {
         assert_parse("#%h", vec![]);
         assert_parse("#h%", vec![Hashtag::new("h", 0, 1)]);
         assert_parse("#_foo_", vec![Hashtag::new("_foo_", 0, 5)]);
-        assert_parse("#-foo-", vec![Hashtag::new("-foo-", 0, 5)]);
+        assert_parse("#-foo", vec![]);
         assert_parse("#1", vec![Hashtag::new("1", 0, 1)]);
         assert_parse("#1a", vec![Hashtag::new("1a", 0, 2)]);
         assert_parse("a#b", vec![]);
@@ -383,6 +451,15 @@ mod tests {
         assert_parse("#á", vec![Hashtag::new("á", 0, 1)]);
         assert_parse("#m-örg", vec![Hashtag::new("m-örg", 0, 5)]);
         assert_parse("#m.örg", vec![Hashtag::new("m.örg", 0, 5)]);
+        assert_parse("#a.b", vec![Hashtag::new("a.b", 0, 3)]);
+        assert_parse("#a.", vec![Hashtag::new("a", 0, 1)]);
+        assert_parse("#a-b", vec![Hashtag::new("a-b", 0, 3)]);
+        assert_parse("#a-", vec![Hashtag::new("a", 0, 1)]);
+
+        assert_parse("#a-a", vec![Hashtag::new("a-a", 0, 3)]);
+        assert_parse("#a.a", vec![Hashtag::new("a.a", 0, 3)]);
+        assert_parse("#-a", vec![]);
+        assert_parse("#.a", vec![]);
 
         // Emoji that are more than one codepoint...
         // assert_parse("#☝🏽", vec![Hashtag::new("#☝🏽", 1, 1)]);
@@ -402,6 +479,5 @@ mod tests {
                 assert_eq!(a, b);
             },
         );
-        //
     }
 }
