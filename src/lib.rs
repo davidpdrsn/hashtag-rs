@@ -339,7 +339,8 @@ trait IsEndOfHashtag {
 impl IsEndOfHashtag for char {
     fn is_end_of_hashtag(&self) -> bool {
         match self {
-            &'\'' | &' ' | &'%' | &'#' => true,
+            &'\'' | &' ' | &'%' | &'#' | &'\n' | &'"' | &'\t' | &'!' | &'@' | &'$' | &'^' |
+            &'&' | &'*' | &'(' | &')' => true,
             _ => false,
         }
     }
@@ -352,10 +353,7 @@ impl IsEndOfHashtag for char {
     }
 
     fn allowed_in_middle_but_not_start(&self) -> bool {
-        match self {
-            &'.' | &'-' => true,
-            _ => false,
-        }
+        self.allowed_in_middle_but_not_end()
     }
 }
 
@@ -538,6 +536,11 @@ mod tests {
         assert_parse("#a.a", vec![Hashtag::new("a.a", 0, 3)]);
         assert_parse("#-a", vec![]);
         assert_parse("#.a", vec![]);
+
+        assert_parse(
+            "#a\n#b",
+            vec![Hashtag::new("a", 0, 1), Hashtag::new("b", 3, 4)],
+        );
 
         // Emoji that are more than one codepoint...
         // assert_parse("#☝🏽", vec![Hashtag::new("#☝🏽", 1, 1)]);
