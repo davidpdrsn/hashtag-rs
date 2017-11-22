@@ -79,7 +79,7 @@ impl ParsingStateMachine {
     }
 
     fn hashtag_token_seen_at(&mut self, idx: usize) {
-        self.hashtag_start_index = idx + 1;
+        self.hashtag_start_index = idx;
     }
 
     fn hashtag_finishes_at(&mut self, idx: usize) {
@@ -317,7 +317,7 @@ mod tests {
     fn it_parses_hashtags() {
         assert_parse(
             "Here comes some text #foo #bar",
-            vec![Hashtag::new("foo", 22, 24), Hashtag::new("bar", 27, 29)],
+            vec![Hashtag::new("foo", 21, 24), Hashtag::new("bar", 26, 29)],
         )
     }
 
@@ -330,7 +330,7 @@ mod tests {
     fn it_parses_tags_in_the_start() {
         assert_parse(
             "#foo here comes #foo",
-            vec![Hashtag::new("foo", 1, 3), Hashtag::new("foo", 17, 19)],
+            vec![Hashtag::new("foo", 0, 3), Hashtag::new("foo", 16, 19)],
         )
     }
 
@@ -338,51 +338,51 @@ mod tests {
     fn it_parses_hashes_without_text() {
         assert_parse("here # comes", vec![]);
         assert_parse("here comes#", vec![]);
-        assert_parse("#here comes", vec![Hashtag::new("here", 1, 4)]);
+        assert_parse("#here comes", vec![Hashtag::new("here", 0, 4)]);
 
         assert_parse("here ## comes", vec![]);
         assert_parse("here comes##", vec![]);
-        assert_parse("##here comes", vec![Hashtag::new("here", 2, 5)]);
+        assert_parse("##here comes", vec![Hashtag::new("here", 1, 5)]);
     }
 
     #[test]
     fn it_parses_hashtags_with_s() {
         assert_parse(
             "#bob's thing is #cool yes",
-            vec![Hashtag::new("bob", 1, 3), Hashtag::new("cool", 17, 20)],
+            vec![Hashtag::new("bob", 0, 3), Hashtag::new("cool", 16, 20)],
         );
     }
 
     #[test]
     fn it_parses_many_different_kinds() {
-        assert_parse("#a1", vec![Hashtag::new("a1", 1, 2)]);
-        assert_parse("#a_1", vec![Hashtag::new("a_1", 1, 3)]);
-        assert_parse("#a-1", vec![Hashtag::new("a-1", 1, 3)]);
-        assert_parse("#a.1", vec![Hashtag::new("a.1", 1, 3)]);
-        assert_parse("#😀", vec![Hashtag::new("😀", 1, 1)]);
-        assert_parse(" #whá", vec![Hashtag::new("whá", 2, 4)]);
+        assert_parse("#a1", vec![Hashtag::new("a1", 0, 2)]);
+        assert_parse("#a_1", vec![Hashtag::new("a_1", 0, 3)]);
+        assert_parse("#a-1", vec![Hashtag::new("a-1", 0, 3)]);
+        assert_parse("#a.1", vec![Hashtag::new("a.1", 0, 3)]);
+        assert_parse("#😀", vec![Hashtag::new("😀", 0, 1)]);
+        assert_parse(" #whá", vec![Hashtag::new("whá", 1, 4)]);
         assert_parse("fdsf dfds", vec![]);
         assert_parse("#%h%", vec![]);
         assert_parse("#%", vec![]);
         assert_parse("#%h", vec![]);
-        assert_parse("#h%", vec![Hashtag::new("h", 1, 1)]);
-        assert_parse("#_foo_", vec![Hashtag::new("_foo_", 1, 5)]);
-        assert_parse("#-foo-", vec![Hashtag::new("-foo-", 1, 5)]);
-        assert_parse("#1", vec![Hashtag::new("1", 1, 1)]);
-        assert_parse("#1a", vec![Hashtag::new("1a", 1, 2)]);
+        assert_parse("#h%", vec![Hashtag::new("h", 0, 1)]);
+        assert_parse("#_foo_", vec![Hashtag::new("_foo_", 0, 5)]);
+        assert_parse("#-foo-", vec![Hashtag::new("-foo-", 0, 5)]);
+        assert_parse("#1", vec![Hashtag::new("1", 0, 1)]);
+        assert_parse("#1a", vec![Hashtag::new("1a", 0, 2)]);
         assert_parse("a#b", vec![]);
         assert_parse(
             "#a#b",
-            vec![Hashtag::new("a", 1, 1), Hashtag::new("b", 3, 3)],
+            vec![Hashtag::new("a", 0, 1), Hashtag::new("b", 2, 3)],
         );
-        assert_parse("#a#", vec![Hashtag::new("a", 1, 1)]);
-        assert_parse("#a# whatever", vec![Hashtag::new("a", 1, 1)]);
-        assert_parse("#a# b", vec![Hashtag::new("a", 1, 1)]);
-        assert_parse("b #a#", vec![Hashtag::new("a", 3, 3)]);
-        assert_parse("b #a# b", vec![Hashtag::new("a", 3, 3)]);
-        assert_parse("#á", vec![Hashtag::new("á", 1, 1)]);
-        assert_parse("#m-örg", vec![Hashtag::new("m-örg", 1, 5)]);
-        assert_parse("#m.örg", vec![Hashtag::new("m.örg", 1, 5)]);
+        assert_parse("#a#", vec![Hashtag::new("a", 0, 1)]);
+        assert_parse("#a# whatever", vec![Hashtag::new("a", 0, 1)]);
+        assert_parse("#a# b", vec![Hashtag::new("a", 0, 1)]);
+        assert_parse("b #a#", vec![Hashtag::new("a", 2, 3)]);
+        assert_parse("b #a# b", vec![Hashtag::new("a", 2, 3)]);
+        assert_parse("#á", vec![Hashtag::new("á", 0, 1)]);
+        assert_parse("#m-örg", vec![Hashtag::new("m-örg", 0, 5)]);
+        assert_parse("#m.örg", vec![Hashtag::new("m.örg", 0, 5)]);
 
         // Emoji that are more than one codepoint...
         // assert_parse("#☝🏽", vec![Hashtag::new("#☝🏽", 1, 1)]);
