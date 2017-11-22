@@ -1,17 +1,90 @@
+//! **NOTE**: It is currently isn't good at dealing with Emoji.
+//!
+//! ## Sample usage
+//!
+//! ```
+//! # extern crate hashtag;
+//! # use hashtag::Hashtag;
+//! # fn main() {
+//! let tags: Vec<Hashtag> = Hashtag::parse("#rust is #awesome");
+//!
+//! assert_eq!(
+//!     tags,
+//!     [
+//!         Hashtag {
+//!             text: "rust".to_string(),
+//!             start: 0,
+//!             end: 4,
+//!         },
+//!         Hashtag {
+//!             text: "awesome".to_string(),
+//!             start: 9,
+//!             end: 16,
+//!         },
+//!     ]
+//! );
+//! # }
+//! ```
+//!
+//! See tests for specifics about what is considered a hashtag and what is not.
+
 #[macro_use]
 extern crate serde_derive;
 
 extern crate serde;
 extern crate serde_json;
 
+/// A hashtag found in some text. See documentation of top level module for more info.
 #[derive(Eq, PartialEq, Debug, Serialize)]
 pub struct Hashtag {
+    /// The text of the hashtag. If hashtag is `"#rust"` the text will be `"rust"`.
+    ///
+    /// ```
+    /// # extern crate hashtag;
+    /// # use hashtag::Hashtag;
+    /// # fn main() {
+    /// assert_eq!(
+    ///     Hashtag::parse("#rust").get(0).unwrap().text,
+    ///     "rust".to_string()
+    /// );
+    /// # }
+    /// ```
     pub text: String,
+
+    /// The starting index of the hashtag. This includes the `#` character. This makes it easier to
+    /// highlight the hashtags later. If the full text we're parsing is `"#rust"` then `start` will
+    /// be 0.
+    ///
+    /// ```
+    /// # extern crate hashtag;
+    /// # use hashtag::Hashtag;
+    /// # fn main() {
+    /// assert_eq!(
+    ///     Hashtag::parse("#rust").get(0).unwrap().start,
+    ///     0
+    /// );
+    /// # }
+    /// ```
     pub start: usize,
+
+    /// The ending index of the hashtag, inclusive. If the full text we're parsing is `"#rust"` then `end`
+    /// will be 4.
+    ///
+    /// ```
+    /// # extern crate hashtag;
+    /// # use hashtag::Hashtag;
+    /// # fn main() {
+    /// assert_eq!(
+    ///     Hashtag::parse("#rust").get(0).unwrap().end,
+    ///     4
+    /// );
+    /// # }
+    /// ```
     pub end: usize,
 }
 
 impl Hashtag {
+    /// Parse a string and return a vector of the hashtags.
     pub fn parse<S>(text: S) -> Vec<Self>
     where
         S: Into<String>,
@@ -30,6 +103,11 @@ impl Hashtag {
         }
     }
 
+    /// Convert a `Hashtag` into JSON using [serde_json](https://crates.io/crates/serde_json).
+    ///
+    /// At Tonsser we use this crate from our Rails API with [helix](https://usehelix.com) and
+    /// because helix only supports passing strings back and forth we serialize the data as JSON
+    /// and deserialize it in Ruby land.
     pub fn to_json(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
