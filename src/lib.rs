@@ -338,8 +338,9 @@ impl IsEndOfHashtag for char {
     fn is_end_of_hashtag(&self) -> bool {
         match self {
             &'\'' | &' ' | &'%' | &'#' | &'\n' | &'"' | &'\t' | &'!' | &'@' | &'$' | &'^' |
-            &'&' | &'*' | &'(' | &')' | &'\r' | &'.' | &'-' | &'<' | &'>' | &'/' | &'\\' |
-            &'|' | &'[' | &']' | &'{' | &'}' | &'`' | &'~' | &'=' | &'+' => true,
+            &'&' | &'*' | &'(' | &')' | &'\r' | &'.' | &',' | &'-' | &'<' | &'>' | &'/' |
+            &'\\' | &'|' | &'[' | &']' | &'{' | &'}' | &'`' | &'~' | &'=' | &'+' | &';' |
+            &':' | &'?' => true,
             &'_' => false,
             _ => false,
         }
@@ -503,6 +504,18 @@ mod tests {
             "#a\r\n#b",
             vec![Hashtag::new("a", 0, 1), Hashtag::new("b", 4, 5)],
         );
+        assert_parse(
+            "foo lol#one#two#three#four,\r\nwtflol #five#six#seven, ",
+            vec![
+                Hashtag::new("five", 36, 40),
+                Hashtag::new("six", 41, 44),
+                Hashtag::new("seven", 45, 50),
+            ],
+        );
+        assert_parse("#a,", vec![Hashtag::new("a", 0, 1)]);
+        assert_parse("#a;", vec![Hashtag::new("a", 0, 1)]);
+        assert_parse("#a:", vec![Hashtag::new("a", 0, 1)]);
+        assert_parse("#a?", vec![Hashtag::new("a", 0, 1)]);
 
     }
 
