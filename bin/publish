@@ -52,10 +52,12 @@ else
     git tag $version
 fi
 
+ruby -e "print \"Sure you want to publish $version? (y/N) \"; gets =~ /^y/ ? exit(0) : exit(1)"
+
 echo "--- Pushing tags"
 git push --tags
 
 echo "--- Releasing to crates.io"
-# cargo publish
+cargo publish
 
 echo "All done! $version is out 👌"
