@@ -29,6 +29,13 @@ Run it with:
 
     cargo build --release && ./target/release/benchmark
 
+## Development
+
+`./bin` has some scripts that you might find helpful.
+
+- `bin/watch` uses [`cargo watch`](https://github.com/passcod/cargo-watch) to run tests and other things when you save a file.
+- `bin/publish` used to publish the current version to <crates.io>.
+
 ## Author
 
 **David Pedersen**, Backend Developer @ [Tonsser](https://github.com/tonsser)
