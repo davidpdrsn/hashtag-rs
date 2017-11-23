@@ -1,4 +1,5 @@
-//! **NOTE**: It is currently isn't good at dealing with Emoji.
+//! The goal of this crate is to match Instagram's parsing of hashtags. So if you find strings that
+//! aren't parsed correctly please open an issue 😃
 //!
 //! ## Sample usage
 //!
