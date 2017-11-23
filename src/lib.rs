@@ -28,12 +28,13 @@
 //! ```
 //!
 //! See tests for specifics about what is considered a hashtag and what is not.
+#![feature(test)]
 
 #[macro_use]
 extern crate serde_derive;
-
 extern crate serde;
 extern crate serde_json;
+extern crate test;
 
 /// A hashtag found in some text. See documentation of top level module for more info.
 #[derive(Eq, PartialEq, Debug, Serialize)]
@@ -378,6 +379,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test::Bencher;
 
     #[test]
     fn test_tokenization() {
@@ -517,6 +519,12 @@ mod tests {
         assert_parse("#a:", vec![Hashtag::new("a", 0, 1)]);
         assert_parse("#a?", vec![Hashtag::new("a", 0, 1)]);
 
+    }
+
+    #[bench]
+    fn test_benchmark_parsing(b: &mut Bencher) {
+        let s = "Something like this might be a #tweet about how cool #rust is⚙️";
+        b.iter(|| Hashtag::parse(&s));
     }
 
     fn assert_parse(text: &'static str, expected_tags: Vec<Hashtag>) {
