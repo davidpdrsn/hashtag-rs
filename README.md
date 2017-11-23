@@ -33,8 +33,7 @@ Run it with:
 
 **David Pedersen**, Backend Developer @ [Tonsser](https://github.com/tonsser)
 
-- [![GitHub](/img/GitHub.png) davidpdrsn](https://github.com/davidpdrsn)
-- [![Twitter](/img/Twitter.png) davidpdrsn](https://twitter.com/davidpdrsn)
+- davidpdrsn on [GitHub](https://github.com/davidpdrsn) and [Twitter](https://twitter.com/davidpdrsn)
 
 ## Contribution
 
