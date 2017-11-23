@@ -47,14 +47,15 @@ version="v$version"
 if (git tag | grep $version > /dev/null); then
     echo "Git tag $version already exists 🚨"
     exit 1
-else
-    echo "--- Tagging $version"
-    git tag $version
 fi
 
 ruby -e "print \"Sure you want to publish $version? (y/N) \"; gets =~ /^y/ ? exit(0) : exit(1)"
 
+echo "--- Tagging $version"
+git tag $version
+
 echo "--- Pushing tags"
+git push
 git push --tags
 
 echo "--- Releasing to crates.io"
