@@ -86,10 +86,12 @@ pub struct Hashtag {
 
 impl Hashtag {
     /// Parse a string and return a vector of the hashtags.
+    #[inline]
     pub fn parse(text: &str) -> Vec<Self> {
         parse_hashtags(text)
     }
 
+    #[inline]
     fn new(text: &str, start: usize, end: usize) -> Hashtag {
         Hashtag {
             text: text.to_string(),
@@ -103,6 +105,7 @@ impl Hashtag {
     /// At Tonsser we use this crate from our Rails API with [helix](https://usehelix.com) and
     /// because helix only supports passing strings back and forth we serialize the data as JSON
     /// and deserialize it in Ruby land.
+    #[inline]
     pub fn to_json(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
@@ -117,6 +120,7 @@ struct ParsingStateMachine {
 }
 
 impl ParsingStateMachine {
+    #[inline]
     fn new() -> ParsingStateMachine {
         ParsingStateMachine {
             parsing_hashtag: Self::default_parse_hashtag(),
@@ -127,34 +131,42 @@ impl ParsingStateMachine {
         }
     }
 
+    #[inline]
     fn default_parse_hashtag() -> bool {
         false
     }
 
+    #[inline]
     fn default_consumed_anything() -> bool {
         false
     }
 
+    #[inline]
     fn default_hashtag_start_index() -> usize {
         0
     }
 
+    #[inline]
     fn default_hashtag_buffer() -> String {
         String::new()
     }
 
+    #[inline]
     fn default_hashtags() -> Vec<Hashtag> {
         Vec::new()
     }
 
+    #[inline]
     fn parsing_hashtag(&self) -> bool {
         self.parsing_hashtag
     }
 
+    #[inline]
     fn hashtag_token_seen_at(&mut self, idx: usize) {
         self.hashtag_start_index = idx;
     }
 
+    #[inline]
     fn hashtag_finishes_at(&mut self, idx: usize) {
         if self.consumed_anything {
             self.hashtags.push(Hashtag::new(
@@ -166,6 +178,7 @@ impl ParsingStateMachine {
         self.reset_parsing_state();
     }
 
+    #[inline]
     fn reset_parsing_state(&mut self) {
         self.parsing_hashtag = Self::default_parse_hashtag();
         self.hashtag_start_index = Self::default_hashtag_start_index();
@@ -173,15 +186,18 @@ impl ParsingStateMachine {
         self.consumed_anything = Self::default_consumed_anything();
     }
 
+    #[inline]
     fn hashtag_incoming(&mut self) {
         self.parsing_hashtag = true;
     }
 
+    #[inline]
     fn consume_char(&mut self, c: char) {
         self.hashtag_buffer.push(c);
         self.consumed_anything = true;
     }
 
+    #[inline]
     fn get_hashtags(self) -> Vec<Hashtag> {
         self.hashtags
     }
@@ -262,10 +278,12 @@ enum Token {
 }
 
 trait IsHashtagToken {
+    #[inline]
     fn is_hashtag_token(&self) -> bool;
 }
 
 impl IsHashtagToken for Token {
+    #[inline]
     fn is_hashtag_token(&self) -> bool {
         match self {
             &Token::Hashtag(_) => true,
@@ -281,6 +299,7 @@ impl<'a, 'b, T> IsHashtagToken for Option<&'a &'b T>
 where
     T: IsHashtagToken,
 {
+    #[inline]
     fn is_hashtag_token(&self) -> bool {
         if let &Some(ref x) = self {
             x.is_hashtag_token()
@@ -290,6 +309,7 @@ where
     }
 }
 
+#[inline]
 fn tokenize(text: &str) -> Vec<Token> {
     let mut tokens: Vec<Token> = vec![Token::StartOfString];
     text.chars()
@@ -309,10 +329,12 @@ fn tokenize(text: &str) -> Vec<Token> {
 }
 
 trait IsEndOfHashtag {
+    #[inline]
     fn is_end_of_hashtag(&self) -> bool;
 }
 
 impl IsEndOfHashtag for char {
+    #[inline]
     fn is_end_of_hashtag(&self) -> bool {
         match self {
             &'\'' | &' ' | &'%' | &'#' | &'\n' | &'"' | &'\t' | &'!' | &'@' | &'$' | &'^' |
@@ -325,6 +347,7 @@ impl IsEndOfHashtag for char {
 }
 
 impl IsEndOfHashtag for Token {
+    #[inline]
     fn is_end_of_hashtag(&self) -> bool {
         match self {
             &Token::Whitespace(_) => true,
@@ -340,6 +363,7 @@ impl<'a, 'b, T> IsEndOfHashtag for Option<&'a &'b T>
 where
     T: IsEndOfHashtag,
 {
+    #[inline]
     fn is_end_of_hashtag(&self) -> bool {
         if let &Some(ref x) = self {
             x.is_end_of_hashtag()
