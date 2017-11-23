@@ -86,19 +86,13 @@ pub struct Hashtag {
 
 impl Hashtag {
     /// Parse a string and return a vector of the hashtags.
-    pub fn parse<S>(text: S) -> Vec<Self>
-    where
-        S: Into<String>,
-    {
+    pub fn parse(text: &str) -> Vec<Self> {
         parse_hashtags(text)
     }
 
-    fn new<S>(text: S, start: usize, end: usize) -> Hashtag
-    where
-        S: Into<String>,
-    {
+    fn new(text: &str, start: usize, end: usize) -> Hashtag {
         Hashtag {
-            text: text.into(),
+            text: text.to_string(),
             start: start,
             end: end,
         }
@@ -164,7 +158,7 @@ impl ParsingStateMachine {
     fn hashtag_finishes_at(&mut self, idx: usize) {
         if self.consumed_anything {
             self.hashtags.push(Hashtag::new(
-                self.hashtag_buffer.clone(),
+                &self.hashtag_buffer,
                 self.hashtag_start_index,
                 idx,
             ));
@@ -193,12 +187,9 @@ impl ParsingStateMachine {
     }
 }
 
-fn parse_hashtags<S>(text: S) -> Vec<Hashtag>
-where
-    S: Into<String>,
-{
+fn parse_hashtags(text: &str) -> Vec<Hashtag> {
     let text: String = text.into();
-    let tokens = tokenize(text);
+    let tokens = tokenize(&text);
     let mut tokens_iter = tokens.iter().peekable();
 
     let mut stm = ParsingStateMachine::new();
@@ -299,28 +290,21 @@ where
     }
 }
 
-fn tokenize<S>(text: S) -> Vec<Token>
-where
-    S: Into<String>,
-{
-    let text: String = text.into();
+fn tokenize(text: &str) -> Vec<Token> {
     let mut tokens: Vec<Token> = vec![Token::StartOfString];
-    let mut last_index = 0;
     text.chars()
         .enumerate()
-        .map(|(idx, c)| {
-            last_index = idx;
-            match c {
-                '#' => Token::Hashtag(idx),
-                ' ' => Token::Whitespace(idx),
-                '\n' => Token::Whitespace(idx),
-                '\r' => Token::Whitespace(idx),
-                '\t' => Token::Whitespace(idx),
-                _ => Token::Char(c, idx),
-            }
+        .map(|(idx, c)| match c {
+            '#' => Token::Hashtag(idx),
+            ' ' => Token::Whitespace(idx),
+            '\n' => Token::Whitespace(idx),
+            '\r' => Token::Whitespace(idx),
+            '\t' => Token::Whitespace(idx),
+            _ => Token::Char(c, idx),
         })
         .for_each(|token| tokens.push(token));
-    tokens.push(Token::EndOfString(last_index + 1));
+    let last_index = tokens.len() - 1;
+    tokens.push(Token::EndOfString(last_index));
     tokens
 }
 
