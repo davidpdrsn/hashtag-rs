@@ -1,0 +1,61 @@
+#!/bin/bash
+set -e
+
+if !(test -z "$(git status --porcelain)"); then
+    echo "It seems the working directory is dirty 🚨"
+    exit 1
+fi
+
+if (cargo check > /dev/null 2>&1); then
+    echo "✅  cargo check"
+else
+    echo "🚫  cargo check"
+    exit 1
+fi
+
+if (cargo build > /dev/null 2>&1); then
+    echo "✅  cargo build"
+else
+    echo "🚫  cargo build"
+    exit 1
+fi
+
+if (cargo test > /dev/null 2>&1); then
+    echo "✅  cargo test"
+else
+    echo "🚫  cargo test"
+    exit 1
+fi
+
+if (cargo bench > /dev/null 2>&1); then
+    echo "✅  cargo bench"
+else
+    echo "🚫  cargo bench"
+    exit 1
+fi
+
+if (cargo doc > /dev/null 2>&1); then
+    echo "✅  cargo doc"
+else
+    echo "🚫  cargo doc"
+    exit 1
+fi
+
+version=$(cat Cargo.toml | grep "version =" | cut -d '=' -f 2 | sed 's/[ "]//g')
+version="v$version"
+
+if (git tag | grep $version > /dev/null); then
+    echo "Git tag $version already exists 🚨"
+    exit 1
+else
+    echo "--- Tagging $version"
+    git tag $version
+fi
+
+echo "--- Pushing tags"
+git push --tags
+
+echo "--- Releasing to crates.io"
+# cargo publish
+
+echo "All done! $version is out 👌"
