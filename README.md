@@ -20,3 +20,26 @@ pub fn main() {
     // ]
 }
 ```
+
+## Benchmarking
+
+I have written a fairly simple benchmarking.
+
+Run it with:
+
+    cargo build --release && ./target/release/benchmark
+
+## Author
+
+**David Pedersen**, Backend Developer @ [Tonsser](https://github.com/tonsser)
+
+- [![GitHub](/img/GitHub.png) davidpdrsn](https://github.com/davidpdrsn)
+- [![Twitter](/img/Twitter.png) davidpdrsn](https://twitter.com/davidpdrsn)
+
+## Contribution
+
+Contributions are more than welcome!
+
+## License
+
+`hashtag` is available under the MIT license. See the LICENSE file for more info.
