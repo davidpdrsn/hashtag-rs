@@ -37,7 +37,7 @@ extern crate serde_json;
 extern crate test;
 
 /// A hashtag found in some text. See documentation of top level module for more info.
-#[derive(Eq, PartialEq, Debug, Serialize)]
+#[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Hashtag {
     /// The text of the hashtag. If hashtag is `"#rust"` the text will be `"rust"`.
     ///
@@ -415,110 +415,28 @@ mod tests {
     }
 
     #[test]
-    fn it_parses_hashtags() {
-        assert_parse(
-            "Here comes some text #foo #bar",
-            vec![Hashtag::new("foo", 21, 24), Hashtag::new("bar", 26, 29)],
-        )
-    }
+    fn parsing_stuff_from_json_file() {
+        use std::fs::File;
+        use std::io::prelude::*;
 
-    #[test]
-    fn it_parses_tags_in_the_middle_of_words() {
-        assert_parse("here comes foo#bar", vec![])
-    }
-
-    #[test]
-    fn it_parses_tags_in_the_start() {
-        assert_parse(
-            "#foo here comes #foo",
-            vec![Hashtag::new("foo", 0, 3), Hashtag::new("foo", 16, 19)],
-        )
-    }
-
-    #[test]
-    fn it_parses_hashes_without_text() {
-        assert_parse("here # comes", vec![]);
-        assert_parse("here comes#", vec![]);
-        assert_parse("#here comes", vec![Hashtag::new("here", 0, 4)]);
-
-        assert_parse("here ## comes", vec![]);
-        assert_parse("here comes##", vec![]);
-        assert_parse("##here comes", vec![Hashtag::new("here", 1, 5)]);
-    }
-
-    #[test]
-    fn it_parses_hashtags_with_s() {
-        assert_parse(
-            "#bob's thing is #cool yes",
-            vec![Hashtag::new("bob", 0, 3), Hashtag::new("cool", 16, 20)],
+        let mut file = File::open("test/hashtag_tests.json").expect("file not found");
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).expect(
+            "something went wrong reading the file",
         );
-    }
 
-    #[test]
-    fn it_parses_many_different_kinds() {
+        #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+        struct HashtagTest {
+            text: String,
+            hashtags: Vec<Hashtag>,
+        };
 
-        assert_parse("#a1", vec![Hashtag::new("a1", 0, 2)]);
-        assert_parse("#a_1", vec![Hashtag::new("a_1", 0, 3)]);
-        assert_parse("#a-1", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#a.1", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#😀", vec![Hashtag::new("😀", 0, 1)]);
-        assert_parse(" #whá", vec![Hashtag::new("whá", 1, 4)]);
-        assert_parse("fdsf dfds", vec![]);
-        assert_parse("#%h%", vec![]);
-        assert_parse("#%", vec![]);
-        assert_parse("#%h", vec![]);
-        assert_parse("#h%", vec![Hashtag::new("h", 0, 1)]);
-        assert_parse("#_foo_", vec![Hashtag::new("_foo_", 0, 5)]);
-        assert_parse("#-foo", vec![]);
-        assert_parse("#1", vec![Hashtag::new("1", 0, 1)]);
-        assert_parse("#1a", vec![Hashtag::new("1a", 0, 2)]);
-        assert_parse("a#b", vec![]);
-        assert_parse(
-            "#a#b",
-            vec![Hashtag::new("a", 0, 1), Hashtag::new("b", 2, 3)],
-        );
-        assert_parse("#a#", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#a# whatever", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#a# b", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("b #a#", vec![Hashtag::new("a", 2, 3)]);
-        assert_parse("b #a# b", vec![Hashtag::new("a", 2, 3)]);
-        assert_parse("#á", vec![Hashtag::new("á", 0, 1)]);
-        assert_parse("#mörg", vec![Hashtag::new("mörg", 0, 4)]);
-        assert_parse("#a.b", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#a.", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#a-b", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#a-", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#a-a", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#a.a", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#-a", vec![]);
-        assert_parse("#.a", vec![]);
-        assert_parse("#a-", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#a.", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse(
-            "#a\n#b",
-            vec![Hashtag::new("a", 0, 1), Hashtag::new("b", 3, 4)],
-        );
-        assert_parse(
-            "#a  #b",
-            vec![Hashtag::new("a", 0, 1), Hashtag::new("b", 4, 5)],
-        );
-        assert_parse(
-            "#a\r\n#b",
-            vec![Hashtag::new("a", 0, 1), Hashtag::new("b", 4, 5)],
-        );
-        assert_parse(
-            "foo lol#one#two#three#four,\r\nwtflol #five#six#seven, ",
-            vec![
-                Hashtag::new("five", 36, 40),
-                Hashtag::new("six", 41, 44),
-                Hashtag::new("seven", 45, 50),
-            ],
-        );
-        assert_parse("#a,", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#a;", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#a:", vec![Hashtag::new("a", 0, 1)]);
-        assert_parse("#a?", vec![Hashtag::new("a", 0, 1)]);
+        let hashtag_tests: Vec<HashtagTest> =
+            serde_json::from_str(&contents).expect("Failed to parse json");
 
+        for test in hashtag_tests {
+            assert_parse(&test.text.clone(), test.hashtags);
+        }
     }
 
     #[bench]
@@ -527,7 +445,7 @@ mod tests {
         b.iter(|| Hashtag::parse(&s));
     }
 
-    fn assert_parse(text: &'static str, expected_tags: Vec<Hashtag>) {
+    fn assert_parse(text: &str, expected_tags: Vec<Hashtag>) {
         println!("Text: {}", text);
 
         let actual_tags = parse_hashtags(text);

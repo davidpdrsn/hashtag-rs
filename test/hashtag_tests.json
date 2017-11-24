@@ -1,0 +1,306 @@
+[
+    {
+        "text": "#rust is awesome",
+        "hashtags": [
+            { "text": "rust", "start": 0, "end": 4 }
+        ]
+    },
+    {
+        "text": "foo # bar",
+        "hashtags": []
+    },
+    {
+        "text": "# foo",
+        "hashtags": []
+    },
+    {
+        "text": "foo #",
+        "hashtags": []
+    },
+    {
+        "text": "foo#",
+        "hashtags": []
+    },
+    {
+        "text": "##foo",
+        "hashtags": [
+            { "text": "foo", "start": 1, "end": 4 }
+        ]
+    },
+    {
+        "text": "foo##",
+        "hashtags": []
+    },
+    {
+        "text": "#bob's thing is #cool yes",
+        "hashtags": [
+            { "text": "bob", "start": 0, "end": 3 },
+            { "text": "cool", "start": 16, "end": 20 }
+        ]
+    },
+    {
+        "text": "#bob's thing is cool #yes",
+        "hashtags": [
+            { "text": "bob", "start": 0, "end": 3 },
+            { "text": "yes", "start": 21, "end": 24 }
+        ]
+    },
+    {
+        "text": "foo#bar",
+        "hashtags": []
+    },
+    {
+        "text": "#foo#bar",
+        "hashtags": [
+            { "text": "foo", "start": 0, "end": 3 },
+            { "text": "bar", "start": 4, "end": 7 }
+        ]
+    },
+    {
+        "text": "#a1",
+        "hashtags": [
+            { "text": "a1", "start": 0, "end": 2 }
+        ]
+    },
+    {
+        "text": "#a_1",
+        "hashtags": [
+            { "text": "a_1", "start": 0, "end": 3 }
+        ]
+    },
+    {
+        "text": "#a-1",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a.1",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": " #whá",
+        "hashtags": [
+            { "text": "whá", "start": 1, "end": 4 }
+        ]
+    },
+    {
+        "text": "#h%",
+        "hashtags": [
+            { "text": "h", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#_foo_",
+        "hashtags": [
+            { "text": "_foo_", "start": 0, "end": 5 }
+        ]
+    },
+    {
+        "text": "#1",
+        "hashtags": [
+            { "text": "1", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#1a",
+        "hashtags": [
+            { "text": "1a", "start": 0, "end": 2 }
+        ]
+    },
+    {
+        "text": "#a#",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a# whatever",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a# b",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "b #a#",
+        "hashtags": [
+            { "text": "a", "start": 2, "end": 3 }
+        ]
+    },
+    {
+        "text": "b #a# b",
+        "hashtags": [
+            { "text": "a", "start": 2, "end": 3 }
+        ]
+    },
+    {
+        "text": "#á",
+        "hashtags": [
+            { "text": "á", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#mörg",
+        "hashtags": [
+            { "text": "mörg", "start": 0, "end": 4 }
+        ]
+    },
+    {
+        "text": "#a.b",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a.",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a-b",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a-",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a-a",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a.a",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a-",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a.",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a;",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a:",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a?",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "#a,",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 }
+        ]
+    },
+
+    {
+        "text": "fdsf dfds",
+        "hashtags": []
+    },
+    {
+        "text": "#%h%",
+        "hashtags": []
+    },
+    {
+        "text": "#%",
+        "hashtags": []
+    },
+    {
+        "text": "#%h",
+        "hashtags": []
+    },
+    {
+        "text": "#-foo",
+        "hashtags": []
+    },
+    {
+        "text": "a#b",
+        "hashtags": []
+    },
+    {
+        "text": "#-a",
+        "hashtags": []
+    },
+    {
+        "text": "#.a",
+        "hashtags": []
+    },
+    {
+        "text": "#a#b",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 },
+            { "text": "b", "start": 2, "end": 3 }
+        ]
+    },
+    {
+        "text": "#a\n#b",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 },
+            { "text": "b", "start": 3, "end": 4 }
+        ]
+    },
+    {
+        "text": "#a  #b",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 },
+            { "text": "b", "start": 4, "end": 5 }
+        ]
+    },
+    {
+        "text": "#a\r\n#b",
+        "hashtags": [
+            { "text": "a", "start": 0, "end": 1 },
+            { "text": "b", "start": 4, "end": 5 }
+        ]
+    },
+    {
+        "text": "foo lol#one#two#three#four,\r\nwtflol #five#six#seven, ",
+        "hashtags": [
+            { "text": "five", "start": 36, "end": 40 },
+            { "text": "six", "start": 41, "end": 44 },
+            { "text": "seven", "start": 45, "end": 50 }
+        ]
+    },
+    {
+        "text": "#😃",
+        "hashtags": [
+            { "text": "😃", "start": 0, "end": 1 }
+        ]
+    },
+    {
+        "text": "",
+        "hashtags": []
+    }
+]
