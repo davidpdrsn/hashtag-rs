@@ -414,47 +414,9 @@ mod tests {
         );
     }
 
-    #[test]
-    fn parsing_stuff_from_json_file() {
-        use std::fs::File;
-        use std::io::prelude::*;
-
-        let mut file = File::open("test/hashtag_tests.json").expect("file not found");
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).expect(
-            "something went wrong reading the file",
-        );
-
-        #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-        struct HashtagTest {
-            text: String,
-            hashtags: Vec<Hashtag>,
-        };
-
-        let hashtag_tests: Vec<HashtagTest> =
-            serde_json::from_str(&contents).expect("Failed to parse json");
-
-        for test in hashtag_tests {
-            assert_parse(&test.text.clone(), test.hashtags);
-        }
-    }
-
     #[bench]
     fn test_benchmark_parsing(b: &mut Bencher) {
         let s = "Something like this might be a #tweet about how cool #rust is⚙️";
         b.iter(|| Hashtag::parse(&s));
-    }
-
-    fn assert_parse(text: &str, expected_tags: Vec<Hashtag>) {
-        println!("Text: {}", text);
-
-        let actual_tags = parse_hashtags(text);
-        println!("actual_tags = {:?}", actual_tags);
-        assert_eq!(actual_tags.len(), expected_tags.len());
-        actual_tags.iter().zip(expected_tags.iter()).for_each(
-            |(a, b)| {
-                assert_eq!(a, b);
-            },
-        );
     }
 }
