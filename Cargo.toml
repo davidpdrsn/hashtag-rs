@@ -1,6 +1,6 @@
 [package]
 name = "hashtag"
-version = "0.1.9"
+version = "0.1.10"
 authors = ["David Pedersen <david.pdrsn@gmail.com>"]
 description = "A hashtag parser"
 license = "MIT"
