@@ -4,6 +4,5 @@ cargo watch \
     -x check \
     -x build \
     -x test \
-    -x bench \
     -x doc \
     --clear
