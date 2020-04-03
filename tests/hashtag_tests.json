@@ -302,5 +302,11 @@
     {
         "text": "",
         "hashtags": []
+    },
+    {
+        "text": "euro #foo€",
+        "hashtags": [
+            { "text": "foo", "start": 5, "end": 8 }
+	]
     }
 ]
