@@ -1,3 +1,7 @@
+[![Crates.io](https://img.shields.io/crates/v/hashtag.svg)](https://crates.io/crates/hashtag)
+[![Docs](https://docs.rs/hashtag/badge.svg)](https://docs.rs/hashtag)
+![maintenance-status](https://img.shields.io/badge/maintenance-passively--maintained-yellowgreen.svg)
+
 # Hashtag
 
 A parser for finding hashtags in strings. For example parsing `Rust is #awesome` gives you `awesome` and its location within the string.
