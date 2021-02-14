@@ -11,14 +11,30 @@ The goal of this crate is to match Instagram's parsing of hashtags. So if you fi
 ## Sample usage
 
 ```rust
-use hashtag::Hashtag;
+use hashtag::{Hashtag, HashtagParser};
+use std::borrow::Cow;
 
-let tags: Vec<Hashtag> = Hashtag::parse("#rust is #awesome");
-println!("{:?}", tags);
-// => [
-//     Hashtag { text: "rust", start: 0, end: 4 },
-//     Hashtag { text: "awesome", start: 9, end: 16 }
-// ]
+let mut parser = HashtagParser::new("#rust is #awesome");
+
+assert_eq!(
+    parser.next().unwrap(),
+    Hashtag {
+        text: Cow::from("rust"),
+        start: 0,
+        end: 4,
+    }
+);
+
+assert_eq!(
+    parser.next().unwrap(),
+    Hashtag {
+        text: Cow::from("awesome"),
+        start: 9,
+        end: 16,
+    }
+);
+
+assert_eq!(parser.next(), None);
 ```
 
 ## Benchmarking
