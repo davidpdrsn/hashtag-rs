@@ -1,6 +1,6 @@
 [package]
 name = "hashtag"
-version = "0.1.11"
+version = "1.0.0"
 authors = ["David Pedersen <david.pdrsn@gmail.com>"]
 description = "A hashtag parser"
 license = "MIT"
@@ -8,7 +8,7 @@ repository = "https://github.com/davidpdrsn/hashtag-rs"
 readme = "README.md"
 categories = ["parser-implementations"]
 edition = "2018"
-documentation = "https://docs.rs/hashtag/0.1.11/hashtag/"
+documentation = "https://docs.rs/hashtag/1.0.0/hashtag/"
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }

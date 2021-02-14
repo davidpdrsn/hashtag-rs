@@ -48,7 +48,7 @@
     unused_qualifications,
     unknown_lints
 )]
-#![doc(html_root_url = "https://docs.rs/hashtag/0.1.11")]
+#![doc(html_root_url = "https://docs.rs/hashtag/1.0.0")]
 
 use std::{
     borrow::Cow,
