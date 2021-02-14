@@ -1,7 +1,5 @@
-extern crate hashtag;
-
-use hashtag::Hashtag;
-use std::time::{Instant, Duration};
+use hashtag::HashtagParser;
+use std::time::{Duration, Instant};
 
 fn main() {
     let string_with_hashtags = "#rust is #awesome";
@@ -14,7 +12,7 @@ fn benchmark_big_string(string_with_hashtags: &str) {
     let strings_to_join = 10_000_000;
     for _ in 0..strings_to_join {
         buffer.push_str(string_with_hashtags);
-        buffer.push_str(" ");
+        buffer.push(' ');
     }
 
     let iterations = 10;
@@ -22,8 +20,7 @@ fn benchmark_big_string(string_with_hashtags: &str) {
         .map(|i| {
             println!("{} / {}", i + 1, iterations);
             let start = Instant::now();
-            let hashtags = Hashtag::parse(&buffer);
-            let count = hashtags.len();
+            let count = HashtagParser::new(&buffer).count();
             let duration = start.elapsed();
             assert_eq!(count, strings_to_join * 2);
             duration
@@ -45,8 +42,7 @@ fn benchmark_small_string(string_with_hashtags: &str) {
             }
 
             let start = Instant::now();
-            let hashtags = Hashtag::parse(&string_with_hashtags);
-            let count = hashtags.len();
+            let count = HashtagParser::new(&string_with_hashtags).count();
             let duration = start.elapsed();
             assert_eq!(count, 2);
             duration

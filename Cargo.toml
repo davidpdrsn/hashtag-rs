@@ -4,14 +4,20 @@ version = "0.1.11"
 authors = ["David Pedersen <david.pdrsn@gmail.com>"]
 description = "A hashtag parser"
 license = "MIT"
-repository = "https://github.com/tonsser/hashtag-rs"
+repository = "https://github.com/davidpdrsn/hashtag-rs"
 readme = "README.md"
 categories = ["parser-implementations"]
+edition = "2018"
+documentation = "https://docs.rs/hashtag/0.1.11/hashtag/"
 
 [dependencies]
-serde = "1.0.21"
-serde_json = "1.0.6"
-serde_derive = "1.0.21"
+serde = { version = "1", features = ["derive"], optional = true }
+
+[dev-dependencies]
+serde_json = "1"
+
+[features]
+default = []
 
 [[bin]]
 name = "benchmark"

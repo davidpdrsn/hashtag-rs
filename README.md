@@ -7,18 +7,14 @@ The goal of this crate is to match Instagram's parsing of hashtags. So if you fi
 ## Sample usage
 
 ```rust
-extern crate hashtag;
-
 use hashtag::Hashtag;
 
-pub fn main() {
-    let tags: Vec<Hashtag> = Hashtag::parse("#rust is #awesome");
-    println!("{:?}", tags);
-    // => [
-    //     Hashtag { text: "rust", start: 0, end: 4 },
-    //     Hashtag { text: "awesome", start: 9, end: 16 }
-    // ]
-}
+let tags: Vec<Hashtag> = Hashtag::parse("#rust is #awesome");
+println!("{:?}", tags);
+// => [
+//     Hashtag { text: "rust", start: 0, end: 4 },
+//     Hashtag { text: "awesome", start: 9, end: 16 }
+// ]
 ```
 
 ## Benchmarking
@@ -28,19 +24,6 @@ I have written a fairly simple benchmarking.
 Run it with:
 
     cargo build --release && ./target/release/benchmark
-
-## Development
-
-`./bin` has some scripts that you might find helpful.
-
-- `bin/watch` uses [`cargo watch`](https://github.com/passcod/cargo-watch) to run tests and other things when you save a file.
-- `bin/publish` used to publish the current version to <crates.io>.
-
-## Author
-
-**David Pedersen**, Backend Developer @ [Tonsser](https://github.com/tonsser)
-
-- davidpdrsn on [GitHub](https://github.com/davidpdrsn) and [Twitter](https://twitter.com/davidpdrsn)
 
 ## Contribution
 

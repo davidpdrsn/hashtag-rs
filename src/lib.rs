@@ -1,132 +1,240 @@
 //! The goal of this crate is to match Instagram's parsing of hashtags. So if you find strings that
 //! aren't parsed correctly please open an issue 😃
 //!
-//! ## Sample usage
+//! ## Example
 //!
 //! ```
-//! # extern crate hashtag;
-//! # use hashtag::Hashtag;
-//! # fn main() {
-//! let tags: Vec<Hashtag> = Hashtag::parse("#rust is #awesome");
+//! use hashtag::{Hashtag, HashtagParser};
+//! use std::borrow::Cow;
+//!
+//! let mut parser = HashtagParser::new("#rust is #awesome");
 //!
 //! assert_eq!(
-//!     tags,
-//!     [
-//!         Hashtag {
-//!             text: "rust".to_string(),
-//!             start: 0,
-//!             end: 4,
-//!         },
-//!         Hashtag {
-//!             text: "awesome".to_string(),
-//!             start: 9,
-//!             end: 16,
-//!         },
-//!     ]
+//!     parser.next().unwrap(),
+//!     Hashtag {
+//!         text: Cow::from("rust"),
+//!         start: 0,
+//!         end: 4,
+//!     }
 //! );
-//! # }
+//!
+//! assert_eq!(
+//!     parser.next().unwrap(),
+//!     Hashtag {
+//!         text: Cow::from("awesome"),
+//!         start: 9,
+//!         end: 16,
+//!     }
+//! );
+//!
+//! assert_eq!(parser.next(), None);
 //! ```
 //!
 //! See tests for specifics about what is considered a hashtag and what is not.
+//!
+//! # Features
+//!
+//! - `serde`: Enable `#[derive(Serialize)]` for [`Hashtag`].
 
-#[macro_use]
-extern crate serde_derive;
-extern crate serde;
-extern crate serde_json;
+#![deny(
+    missing_docs,
+    unused_imports,
+    missing_debug_implementations,
+    missing_copy_implementations,
+    trivial_numeric_casts,
+    unsafe_code,
+    unstable_features,
+    unused_import_braces,
+    unused_qualifications,
+    unknown_lints
+)]
+#![doc(html_root_url = "https://docs.rs/hashtag/0.1.11")]
+
+use std::{
+    borrow::Cow,
+    fmt,
+    iter::{once, Chain},
+    iter::{Enumerate, Peekable},
+};
 
 /// A hashtag found in some text. See documentation of top level module for more info.
-#[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Hashtag {
-    /// The text of the hashtag. If hashtag is `"#rust"` the text will be `"rust"`.
+#[derive(Eq, PartialEq, Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct Hashtag<'a> {
+    /// The text of the hashtag.
     ///
-    /// ```
-    /// # extern crate hashtag;
-    /// # use hashtag::Hashtag;
-    /// # fn main() {
-    /// assert_eq!(
-    ///     Hashtag::parse("#rust").get(0).unwrap().text,
-    ///     "rust".to_string()
-    /// );
-    /// # }
-    /// ```
-    pub text: String,
+    /// [`Cow`] is used to allow hashtags to be references into the original string if it contains
+    /// only ascii.
+    ///
+    /// If hashtag is `"#rust"` the text will be `"rust"`.
+    pub text: Cow<'a, str>,
 
-    /// The starting index of the hashtag. This includes the `#` character. This makes it easier to
-    /// highlight the hashtags later. If the full text we're parsing is `"#rust"` then `start` will
-    /// be 0.
+    /// The starting index of the hashtag.
     ///
-    /// ```
-    /// # extern crate hashtag;
-    /// # use hashtag::Hashtag;
-    /// # fn main() {
-    /// assert_eq!(
-    ///     Hashtag::parse("#rust").get(0).unwrap().start,
-    ///     0
-    /// );
-    /// # }
-    /// ```
+    /// This includes the `#` character. This makes it easier to highlight the hashtags later. If
+    /// the full text we're parsing is `"#rust"` then `start` will be 0.
     pub start: usize,
 
-    /// The ending index of the hashtag, inclusive. If the full text we're parsing is `"#rust"` then `end`
-    /// will be 4.
+    /// The ending index of the hashtag, inclusive.
     ///
-    /// ```
-    /// # extern crate hashtag;
-    /// # use hashtag::Hashtag;
-    /// # fn main() {
-    /// assert_eq!(
-    ///     Hashtag::parse("#rust").get(0).unwrap().end,
-    ///     4
-    /// );
-    /// # }
-    /// ```
+    /// If the full text we're parsing is `"#rust"` then `end` will be 4.
     pub end: usize,
 }
 
-impl Hashtag {
-    /// Parse a string and return a vector of the hashtags.
-    #[inline]
-    pub fn parse(text: &str) -> Vec<Self> {
-        parse_hashtags(text)
-    }
-
-    #[inline]
-    fn new(text: &str, start: usize, end: usize) -> Hashtag {
-        Hashtag {
-            text: text.to_string(),
-            start: start,
-            end: end,
-        }
-    }
-
-    /// Convert a `Hashtag` into JSON using [serde_json](https://crates.io/crates/serde_json).
-    ///
-    /// At Tonsser we use this crate from our Rails API with [helix](https://usehelix.com) and
-    /// because helix only supports passing strings back and forth we serialize the data as JSON
-    /// and deserialize it in Ruby land.
-    #[inline]
-    pub fn to_json(&self) -> String {
-        serde_json::to_string(self).unwrap()
+impl<'a> fmt::Display for Hashtag<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#")?;
+        write!(f, "{}", self.text)?;
+        Ok(())
     }
 }
 
-struct ParsingStateMachine {
+impl<'a> AsRef<str> for Hashtag<'a> {
+    fn as_ref(&self) -> &str {
+        &self.text
+    }
+}
+
+/// A parser that finds hashtags in a string.
+///
+/// Implements [`Iterator`] and yields [`Hashtag`]s.
+#[derive(Debug)]
+pub struct HashtagParser<'a> {
+    whole_string: &'a str,
+    state: IterState<'a>,
+    done: bool,
+}
+
+impl<'a> HashtagParser<'a> {
+    /// Create a new `HashtagParser` that will parse the given string.
+    pub fn new(text: &'a str) -> Self {
+        Self {
+            whole_string: text,
+            done: false,
+            state: IterState::Init,
+        }
+    }
+}
+
+#[derive(Debug)]
+enum IterState<'a> {
+    Init,
+    Parsing {
+        tokens: Peekable<Enumerate<TokenIter<'a>>>,
+        stm: ParsingStateMachine<'a>,
+    },
+}
+
+impl<'a> Iterator for HashtagParser<'a> {
+    type Item = Hashtag<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if self.done {
+                return None;
+            }
+
+            match &mut self.state {
+                IterState::Init => {
+                    let tokens = tokenize(&self.whole_string).enumerate().peekable();
+                    let stm = ParsingStateMachine::new(&self.whole_string);
+                    self.state = IterState::Parsing { tokens, stm };
+                }
+                IterState::Parsing { tokens, stm } => {
+                    while let Some((i, token)) = tokens.next() {
+                        match token {
+                            Token::Hashtag => {
+                                if stm.parsing_hashtag() {
+                                    if tokens.peek().map(|(_, tok)| tok).is_end_of_hashtag() {
+                                        stm.reset_parsing_state();
+                                    } else {
+                                        stm.hashtag_token_seen_at(i - 1);
+                                    }
+                                }
+                            }
+
+                            Token::Whitespace => {
+                                let mut hashtag = None;
+
+                                if stm.parsing_hashtag() {
+                                    hashtag = stm.hashtag_finishes_at(i - 2);
+                                }
+
+                                if tokens.peek().map(|(_, tok)| tok).is_hashtag_token() {
+                                    stm.hashtag_incoming();
+                                }
+
+                                if let Some(hashtag) = hashtag.take() {
+                                    return Some(hashtag);
+                                }
+                            }
+
+                            Token::Char(c) => {
+                                if stm.parsing_hashtag() {
+                                    let mut hashtag = None;
+
+                                    if c.is_end_of_hashtag() {
+                                        hashtag = stm.hashtag_finishes_at(i - 2);
+                                    } else {
+                                        stm.consume_char(c);
+                                    }
+
+                                    if tokens.peek().map(|(_, tok)| tok).is_hashtag_token() {
+                                        hashtag = stm.hashtag_finishes_at(i - 1);
+                                        stm.hashtag_incoming();
+                                    }
+
+                                    if let Some(hashtag) = hashtag.take() {
+                                        return Some(hashtag);
+                                    }
+                                }
+                            }
+
+                            Token::StartOfString => {
+                                if tokens.peek().map(|(_, tok)| tok).is_hashtag_token() {
+                                    stm.hashtag_incoming();
+                                }
+                            }
+
+                            Token::EndOfString => {
+                                let hashtag = if stm.parsing_hashtag() {
+                                    stm.hashtag_finishes_at(i - 2)
+                                } else {
+                                    None
+                                };
+                                self.done = true;
+                                return hashtag;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<'a> std::iter::FusedIterator for HashtagParser<'a> {}
+
+#[derive(Debug)]
+struct ParsingStateMachine<'a> {
     consumed_anything: bool,
     hashtag_buffer: String,
     hashtag_start_index: usize,
-    hashtags: Vec<Hashtag>,
     parsing_hashtag: bool,
+    is_ascii: bool,
+    whole_string: &'a str,
 }
 
-impl ParsingStateMachine {
+impl<'a> ParsingStateMachine<'a> {
     #[inline]
-    fn new() -> ParsingStateMachine {
+    fn new(text: &'a str) -> ParsingStateMachine<'a> {
         ParsingStateMachine {
             parsing_hashtag: Self::default_parse_hashtag(),
             hashtag_start_index: Self::default_hashtag_start_index(),
-            hashtag_buffer: Self::default_hashtag_buffer(),
-            hashtags: Self::default_hashtags(),
+            hashtag_buffer: String::new(),
             consumed_anything: Self::default_consumed_anything(),
+            is_ascii: text.is_ascii(),
+            whole_string: text,
         }
     }
 
@@ -146,16 +254,6 @@ impl ParsingStateMachine {
     }
 
     #[inline]
-    fn default_hashtag_buffer() -> String {
-        String::new()
-    }
-
-    #[inline]
-    fn default_hashtags() -> Vec<Hashtag> {
-        Vec::new()
-    }
-
-    #[inline]
     fn parsing_hashtag(&self) -> bool {
         self.parsing_hashtag
     }
@@ -166,22 +264,31 @@ impl ParsingStateMachine {
     }
 
     #[inline]
-    fn hashtag_finishes_at(&mut self, idx: usize) {
-        if self.consumed_anything {
-            self.hashtags.push(Hashtag::new(
-                &self.hashtag_buffer,
-                self.hashtag_start_index,
-                idx,
-            ));
-        }
+    fn hashtag_finishes_at(&mut self, idx: usize) -> Option<Hashtag<'a>> {
+        let hashtag = if self.consumed_anything {
+            let text = if self.is_ascii {
+                Cow::Borrowed(&self.whole_string[self.hashtag_start_index + 1..idx + 1])
+            } else {
+                Cow::Owned(self.hashtag_buffer.clone())
+            };
+
+            Some(Hashtag {
+                text,
+                start: self.hashtag_start_index,
+                end: idx,
+            })
+        } else {
+            None
+        };
         self.reset_parsing_state();
+        hashtag
     }
 
     #[inline]
     fn reset_parsing_state(&mut self) {
         self.parsing_hashtag = Self::default_parse_hashtag();
         self.hashtag_start_index = Self::default_hashtag_start_index();
-        self.hashtag_buffer = Self::default_hashtag_buffer();
+        self.hashtag_buffer.clear();
         self.consumed_anything = Self::default_consumed_anything();
     }
 
@@ -192,115 +299,39 @@ impl ParsingStateMachine {
 
     #[inline]
     fn consume_char(&mut self, c: char) {
-        self.hashtag_buffer.push(c);
+        if !self.is_ascii {
+            self.hashtag_buffer.push(c);
+        }
         self.consumed_anything = true;
     }
-
-    #[inline]
-    fn get_hashtags(self) -> Vec<Hashtag> {
-        self.hashtags
-    }
 }
-
-fn parse_hashtags(text: &str) -> Vec<Hashtag> {
-    let text: String = text.into();
-    let tokens = tokenize(&text);
-    let mut tokens_iter = tokens.iter().peekable();
-
-    let mut stm = ParsingStateMachine::new();
-
-    loop {
-        if let Some(token) = tokens_iter.next() {
-            match token {
-                &Token::Hashtag(idx) => {
-                    if stm.parsing_hashtag() {
-                        if tokens_iter.peek().is_end_of_hashtag() {
-                            stm.reset_parsing_state();
-                        } else {
-                            stm.hashtag_token_seen_at(idx);
-                        }
-                    }
-                }
-
-                &Token::Whitespace(idx) => {
-                    if stm.parsing_hashtag() {
-                        stm.hashtag_finishes_at(idx - 1);
-                    }
-
-                    if tokens_iter.peek().is_hashtag_token() {
-                        stm.hashtag_incoming();
-                    }
-                }
-
-                &Token::Char(c, idx) => {
-                    if stm.parsing_hashtag() {
-                        if c.is_end_of_hashtag() {
-                            stm.hashtag_finishes_at(idx - 1);
-                        } else {
-                            stm.consume_char(c);
-                        }
-
-                        if tokens_iter.peek().is_hashtag_token() {
-                            stm.hashtag_finishes_at(idx);
-                            stm.hashtag_incoming();
-                        }
-                    }
-                }
-
-                &Token::StartOfString => {
-                    if tokens_iter.peek().is_hashtag_token() {
-                        stm.hashtag_incoming();
-                    }
-                }
-
-                &Token::EndOfString(idx) => {
-                    if stm.parsing_hashtag() {
-                        stm.hashtag_finishes_at(idx - 1);
-                    }
-                }
-            }
-        } else {
-            break;
-        }
-    }
-    let hashtags = stm.get_hashtags();
-    hashtags
-}
-
 #[derive(Eq, PartialEq, Debug)]
 enum Token {
-    Char(char, usize),
-    Whitespace(usize),
-    Hashtag(usize),
+    Char(char),
+    Whitespace,
+    Hashtag,
     StartOfString,
-    EndOfString(usize),
+    EndOfString,
 }
 
 trait IsHashtagToken {
-    #[inline]
     fn is_hashtag_token(&self) -> bool;
 }
 
 impl IsHashtagToken for Token {
     #[inline]
     fn is_hashtag_token(&self) -> bool {
-        match self {
-            &Token::Hashtag(_) => true,
-            &Token::Char(_, _) => false,
-            &Token::Whitespace(_) => false,
-            &Token::StartOfString => false,
-            &Token::EndOfString(_) => false,
-        }
+        matches!(self, Token::Hashtag)
     }
 }
 
-impl<'a, 'b, T> IsHashtagToken for Option<&'a &'b T>
+impl<'a, T> IsHashtagToken for Option<&'a T>
 where
     T: IsHashtagToken,
 {
     #[inline]
     fn is_hashtag_token(&self) -> bool {
-        if let &Some(ref x) = self {
+        if let Some(x) = self {
             x.is_hashtag_token()
         } else {
             false
@@ -308,27 +339,30 @@ where
     }
 }
 
+type SingleToken = std::iter::Once<Token>;
+type TokensFromStr<'a> = std::iter::Map<std::str::Chars<'a>, fn(char) -> Token>;
+type TokenIter<'a> = Chain<Chain<SingleToken, TokensFromStr<'a>>, SingleToken>;
+
 #[inline]
-fn tokenize(text: &str) -> Vec<Token> {
-    let mut tokens: Vec<Token> = vec![Token::StartOfString];
-    text.chars()
-        .enumerate()
-        .map(|(idx, c)| match c {
-            '#' => Token::Hashtag(idx),
-            ' ' => Token::Whitespace(idx),
-            '\n' => Token::Whitespace(idx),
-            '\r' => Token::Whitespace(idx),
-            '\t' => Token::Whitespace(idx),
-            _ => Token::Char(c, idx),
-        })
-        .for_each(|token| tokens.push(token));
-    let last_index = tokens.len() - 1;
-    tokens.push(Token::EndOfString(last_index));
-    tokens
+fn tokenize(text: &str) -> TokenIter<'_> {
+    once(Token::StartOfString)
+        .chain(text.chars().map(token_from_char as _))
+        .chain(once(Token::EndOfString))
+}
+
+#[inline]
+fn token_from_char(c: char) -> Token {
+    match c {
+        '#' => Token::Hashtag,
+        ' ' => Token::Whitespace,
+        '\n' => Token::Whitespace,
+        '\r' => Token::Whitespace,
+        '\t' => Token::Whitespace,
+        _ => Token::Char(c),
+    }
 }
 
 trait IsEndOfHashtag {
-    #[inline]
     fn is_end_of_hashtag(&self) -> bool;
 }
 
@@ -336,10 +370,10 @@ impl IsEndOfHashtag for char {
     #[inline]
     fn is_end_of_hashtag(&self) -> bool {
         match self {
-            &'\'' | &' ' | &'%' | &'#' | &'\n' | &'"' | &'\t' | &'!' | &'@' | &'€' | &'$' | &'^' |
-            &'&' | &'*' | &'(' | &')' | &'\r' | &'.' | &',' | &'-' | &'<' | &'>' | &'/' |
-            &'\\' | &'|' | &'[' | &']' | &'{' | &'}' | &'`' | &'~' | &'=' | &'+' | &';' |
-            &'?' | &'£' | &'•' | &'´' | &':' => true,
+            &'\'' | &' ' | &'%' | &'#' | &'\n' | &'"' | &'\t' | &'!' | &'@' | &'€' | &'$'
+            | &'^' | &'&' | &'*' | &'(' | &')' | &'\r' | &'.' | &',' | &'-' | &'<' | &'>'
+            | &'/' | &'\\' | &'|' | &'[' | &']' | &'{' | &'}' | &'`' | &'~' | &'=' | &'+'
+            | &';' | &'?' | &'£' | &'•' | &'´' | &':' => true,
             &'_' => false,
             _ => false,
         }
@@ -350,29 +384,24 @@ impl IsEndOfHashtag for Token {
     #[inline]
     fn is_end_of_hashtag(&self) -> bool {
         match self {
-            &Token::Whitespace(_) => true,
-            &Token::Char(c, _) => c.is_end_of_hashtag(),
-            &Token::EndOfString(_) => true,
-            &Token::Hashtag(_) => false,
-            &Token::StartOfString => false,
+            Token::Whitespace => true,
+            Token::Char(c) => c.is_end_of_hashtag(),
+            Token::EndOfString => true,
+            Token::Hashtag => false,
+            Token::StartOfString => false,
         }
     }
 }
 
-impl<'a, 'b, T> IsEndOfHashtag for Option<&'a &'b T>
+impl<'a, T> IsEndOfHashtag for Option<&'a T>
 where
     T: IsEndOfHashtag,
 {
     #[inline]
     fn is_end_of_hashtag(&self) -> bool {
-        if let &Some(ref x) = self {
-            x.is_end_of_hashtag()
-        } else {
-            false
-        }
+        self.map(|x| x.is_end_of_hashtag()).unwrap_or(false)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -380,21 +409,21 @@ mod tests {
 
     #[test]
     fn test_tokenization() {
-        let tokens: Vec<Token> = tokenize("text #foo");
+        let tokens: Vec<Token> = tokenize("text #foo").collect();
         assert_eq!(
             tokens,
             vec![
                 Token::StartOfString,
-                Token::Char('t', 0),
-                Token::Char('e', 1),
-                Token::Char('x', 2),
-                Token::Char('t', 3),
-                Token::Whitespace(4),
-                Token::Hashtag(5),
-                Token::Char('f', 6),
-                Token::Char('o', 7),
-                Token::Char('o', 8),
-                Token::EndOfString(9),
+                Token::Char('t'),
+                Token::Char('e'),
+                Token::Char('x'),
+                Token::Char('t'),
+                Token::Whitespace,
+                Token::Hashtag,
+                Token::Char('f'),
+                Token::Char('o'),
+                Token::Char('o'),
+                Token::EndOfString,
             ]
         );
     }
@@ -402,12 +431,8 @@ mod tests {
     #[test]
     fn test_tokenize_strings_with_emojis() {
         assert_eq!(
-            tokenize("😀"),
-            vec![
-                Token::StartOfString,
-                Token::Char('😀', 0),
-                Token::EndOfString(1),
-            ]
+            tokenize("😀").collect::<Vec<_>>(),
+            vec![Token::StartOfString, Token::Char('😀'), Token::EndOfString,]
         );
     }
 }
